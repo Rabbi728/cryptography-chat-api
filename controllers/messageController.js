@@ -1,7 +1,8 @@
 const messageService = require('../services/messageService');
+const userService = require('../services/userService');
 
 async function createConversation(req, res) {
-    const { name, participants } = req.body; // `participants` is an array of user IDs
+    const { name, participants } = req.body;
     try {
         const conversationId = await messageService.createConversation(name, participants);
         res.status(201).send({ conversationId });
@@ -11,9 +12,14 @@ async function createConversation(req, res) {
 }
 
 async function sendMessage(req, res) {
-    const { conversationId, senderId, receiverId, message, senderDecryptKey, receiverDecryptKey } = req.body; // Accept decryption keys
+    const { conversationId, message, senderDecryptKey, receiverDecryptKey } = req.body;
+    const senderId = req.user.id;
+
     try {
-        await messageService.sendMessage(conversationId, senderId, receiverId, message, senderDecryptKey, receiverDecryptKey);
+        await messageService.sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey);
+        await knex('conversations')
+            .where({ id: conversationId })
+            .update({ updated_at: knex.fn.now() }); // Update updated_at for the conversation
         res.status(200).send({ message: 'Message sent successfully' });
     } catch (err) {
         res.status(500).send({ error: 'Error sending message' });
@@ -22,8 +28,15 @@ async function sendMessage(req, res) {
 
 async function fetchMessages(req, res) {
     const { conversationId } = req.query;
+    const userEmail = req.user.email;
+
     try {
-        const messages = await messageService.fetchMessages(conversationId);
+        const user = await userService.getUserByEmail(userEmail);
+        if (!user) {
+            return res.status(404).send({ error: 'User not found' });
+        }
+
+        const messages = await messageService.fetchMessagesWithDetails(conversationId, user.id);
         res.status(200).send(messages);
     } catch (err) {
         res.status(500).send({ error: 'Error fetching messages' });
@@ -31,7 +44,7 @@ async function fetchMessages(req, res) {
 }
 
 async function fetchConversations(req, res) {
-    const { userId } = req.query; // Fetch conversations for a specific user
+    const { userId } = req.query;
     try {
         const conversations = await messageService.fetchConversations(userId);
         res.status(200).send(conversations);

@@ -1,10 +1,12 @@
+require('dotenv').config();
+
 module.exports = {
     client: 'mysql',
     connection: {
-        host: 'localhost',
-        user: 'root',
-        password: 'password',
-        database: 'chat',
+        host: process.env.DB_HOST || 'localhost',
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || 'password',
+        database: process.env.DB_NAME || 'chat',
     },
     pool: { min: 2, max: 10 },
 };

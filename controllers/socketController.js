@@ -1,36 +1,30 @@
-const socketService = require('../services/socketService');
-
 async function handleConnection(socket, io) {
     console.log('A user connected:', socket.id);
 
-    socket.on('publicKey', async (publicKey) => {
-        try {
-            await socketService.storePublicKey(socket.id, publicKey);
-            console.log(`Public key stored for ${socket.id}`);
-        } catch (err) {
-            console.error('Error storing public key:', err);
-        }
+    socket.on('joinRoom', ({ conversationId }) => {
+        socket.join(`conversation_${conversationId}`);
+        console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
     });
 
-    socket.on('message', async ({ to, encryptedMessage }) => {
+    socket.on('leaveRoom', ({ conversationId }) => {
+        socket.leave(`conversation_${conversationId}`);
+        console.log(`Socket ${socket.id} left room conversation_${conversationId}`);
+    });
+
+    socket.on('message', ({ conversationId, senderId, encryptedMessage }) => {
         try {
-            const recipient = await socketService.getUserBySocketId(to);
-            if (recipient) {
-                io.to(to).emit('message', { from: socket.id, encryptedMessage });
-                await socketService.saveMessage(socket.id, to, encryptedMessage);
-            }
+            io.to(`conversation_${conversationId}`).emit('message', {
+                from: senderId,
+                encryptedMessage,
+            });
+            console.log(`Message sent in room conversation_${conversationId} by user ${senderId}`);
         } catch (err) {
             console.error('Error relaying message:', err);
         }
     });
 
-    socket.on('disconnect', async () => {
+    socket.on('disconnect', () => {
         console.log('A user disconnected:', socket.id);
-        try {
-            await socketService.deleteUser(socket.id);
-        } catch (err) {
-            console.error('Error removing user:', err);
-        }
     });
 }
 

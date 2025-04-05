@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { promisify } = require('util');
 
-const SECRET_KEY = process.env.SECRET_KEY || 'default_secret_key'; // Use environment variable for encryption
+const SECRET_KEY = process.env.SECRET_KEY || 'default_secret_key';
 const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_key';
 
 function encryptPrivateKey(privateKey) {
@@ -36,11 +36,13 @@ async function register(name, email, password) {
     const encryptedPrivateKey = encryptPrivateKey(privateKey);
 
     await knex('users').insert({
-        name, // Use name instead of username and fullName
+        name,
         email,
         password: hashedPassword,
         public_key: publicKey,
         private_key: encryptedPrivateKey,
+        created_at: knex.fn.now(),
+        updated_at: knex.fn.now(),
     });
 
     return { publicKey };
@@ -48,7 +50,7 @@ async function register(name, email, password) {
 
 async function login(email, password) {
     const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
-    const user = await knex('users').where({ email, password: hashedPassword }).first(); // Use email instead of name
+    const user = await knex('users').where({ email, password: hashedPassword }).first();
     if (!user) throw new Error('Invalid credentials');
     return jwt.sign({ id: user.id, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
 }
@@ -59,4 +61,8 @@ async function getPrivateKey(userId) {
     return decryptPrivateKey(user.private_key);
 }
 
-module.exports = { register, login, getPrivateKey };
+async function getUserByEmail(email) {
+    return await knex('users').where({ email }).first();
+}
+
+module.exports = { register, login, getPrivateKey, getUserByEmail };

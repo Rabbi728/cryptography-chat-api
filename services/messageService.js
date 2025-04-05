@@ -1,32 +1,49 @@
 const knex = require('knex')(require('../knexfile'));
 
 async function createConversation(name, participants) {
-    const [conversationId] = await knex('conversations').insert({ name }).returning('id');
+    const [conversationId] = await knex('conversations')
+        .insert({ name, created_at: knex.fn.now(), updated_at: knex.fn.now() })
+        .returning('id');
 
     const participantRecords = participants.map((userId) => ({
         conversation_id: conversationId,
         user_id: userId,
+        created_at: knex.fn.now(),
+        updated_at: knex.fn.now(),
     }));
     await knex('conversation_participants').insert(participantRecords);
 
     return conversationId;
 }
 
-async function sendMessage(conversationId, senderId, receiverId, message, senderDecryptKey, receiverDecryptKey) {
+async function sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey) {
     await knex('messages').insert({
         conversation_id: conversationId,
         sender_id: senderId,
-        receiver_id: receiverId,
         message,
-        sender_decrypt_key: senderDecryptKey, // Store sender's decryption key
-        receiver_decrypt_key: receiverDecryptKey, // Store receiver's decryption key
+        sender_decrypt_key: senderDecryptKey,
+        receiver_decrypt_key: receiverDecryptKey,
+        created_at: knex.fn.now(),
+        updated_at: knex.fn.now(),
     });
 }
 
-async function fetchMessages(conversationId) {
-    return await knex('messages')
+async function fetchMessagesWithDetails(conversationId, userId) {
+    const messages = await knex('messages')
         .where({ conversation_id: conversationId })
-        .orderBy('timestamp', 'desc');
+        .orderBy('created_at', 'desc');
+
+    const otherParticipant = await knex('conversation_participants')
+        .join('users', 'conversation_participants.user_id', 'users.id')
+        .where('conversation_participants.conversation_id', conversationId)
+        .andWhere('users.id', '!=', userId)
+        .select('users.id as user_id', 'users.name', 'users.email', 'users.public_key')
+        .first();
+
+    return messages.map((msg) => ({
+        ...msg,
+        other_user: otherParticipant,
+    }));
 }
 
 async function fetchConversations(userId) {
@@ -37,4 +54,4 @@ async function fetchConversations(userId) {
         .orderBy('conversations.created_at', 'desc');
 }
 
-module.exports = { createConversation, sendMessage, fetchMessages, fetchConversations };
+module.exports = { createConversation, sendMessage, fetchMessagesWithDetails, fetchConversations };
