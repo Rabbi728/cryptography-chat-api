@@ -1,0 +1,21 @@
+CREATE DATABASE IF NOT EXISTS chat;
+
+USE chat;
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    socket_id VARCHAR(255) NOT NULL UNIQUE,
+    public_key TEXT NOT NULL,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id VARCHAR(255) NOT NULL,
+    receiver_id VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(socket_id),
+    FOREIGN KEY (receiver_id) REFERENCES users(socket_id)
+);

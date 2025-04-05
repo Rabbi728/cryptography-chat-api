@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypted Chat</title>
+</head>
+<body>
+    <h1>End-to-End Encrypted Chat</h1>
+    <textarea id="message" placeholder="Type your message"></textarea>
+    <button id="send">Send</button>
+    <ul id="messages"></ul>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io('http://localhost:3000');
+        let publicKey, privateKey;
+
+        // Generate key pair
+        async function generateKeys() {
+            const keyPair = await crypto.subtle.generateKey(
+                { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+                true,
+                ['encrypt', 'decrypt']
+            );
+            publicKey = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+            privateKey = keyPair.privateKey;
+            socket.emit('publicKey', publicKey);
+        }
+
+        generateKeys();
+
+        // Send encrypted message
+        document.getElementById('send').addEventListener('click', async () => {
+            const message = document.getElementById('message').value;
+            const encryptedMessage = await crypto.subtle.encrypt(
+                { name: 'RSA-OAEP' },
+                publicKey,
+                new TextEncoder().encode(message)
+            );
+            socket.emit('message', { to: 'recipientSocketId', encryptedMessage });
+        });
+
+        // Receive encrypted message
+        socket.on('message', async ({ from, encryptedMessage }) => {
+            const decryptedMessage = await crypto.subtle.decrypt(
+                { name: 'RSA-OAEP' },
+                privateKey,
+                encryptedMessage
+            );
+            const message = new TextDecoder().decode(decryptedMessage);
+            const messages = document.getElementById('messages');
+            const li = document.createElement('li');
+            li.textContent = `From ${from}: ${message}`;
+            messages.appendChild(li);
+        });
+    </script>
+</body>
+</html>
