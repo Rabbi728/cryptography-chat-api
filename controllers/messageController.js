@@ -12,11 +12,11 @@ async function createConversation(req, res) {
 }
 
 async function sendMessage(req, res) {
-    const { conversationId, message, senderDecryptKey, receiverDecryptKey } = req.body;
+    const { conversationId, message, senderDecryptKey, receiverDecryptKey, vi } = req.body; // Include vi
     const senderId = req.user.id;
 
     try {
-        await messageService.sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey);
+        await messageService.sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey, vi); // Pass vi
         await knex('conversations')
             .where({ id: conversationId })
             .update({ updated_at: knex.fn.now() }); // Update updated_at for the conversation
