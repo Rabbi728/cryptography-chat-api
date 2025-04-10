@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -15,6 +16,6 @@ io.on('connection', (socket) => {
     socketController.handleConnection(socket, io);
 });
 
-server.listen(3000, () => {
-    console.log('Server is running on http://localhost:3000');
+server.listen(process.env.APP_PORT, () => {
+    console.log(`Server is running on http://localhost:${process.env.APP_PORT}`);
 });
