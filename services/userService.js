@@ -19,6 +19,15 @@ function decryptPrivateKey(encryptedPrivateKey) {
     return decrypted;
 }
 
+function encryptPrivateKeyWithPassword(privateKey, password) {
+    const key = crypto.createHash('sha256').update(password).digest();
+    const iv = Buffer.alloc(16, 0); // Static IV for simplicity; consider using a random IV for better security.
+    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    let encrypted = cipher.update(privateKey, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return encrypted;
+}
+
 async function generateKeyPair() {
     const { publicKey, privateKey } = await crypto.generateKeyPairSync('rsa', {
         modulusLength: 2048,
@@ -51,7 +60,8 @@ async function login(email, password) {
     const user = await knex('users').where({ email, password: hashedPassword }).first();
     if (!user) throw new Error('Invalid credentials');
     const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
-    return { token, privateKey: user.private_key };
+    const encryptedPrivateKey = encryptPrivateKeyWithPassword(decryptPrivateKey(user.private_key), password);
+    return { token, privateKey: encryptedPrivateKey, user };
 }
 
 async function getPrivateKey(userId) {
