@@ -42,7 +42,7 @@ async function fetchMessagesWithDetails(conversationId, userId) {
         .first();
 
     return {
-        ...messages,
+        messages : [...messages],
         recipient: otherParticipant,
     };
 }
