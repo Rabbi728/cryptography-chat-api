@@ -6,7 +6,8 @@ exports.up = function (knex) {
         table.text('sender_decrypt_key').notNullable();
         table.text('receiver_decrypt_key').notNullable();
         table.integer('conversation_id').unsigned().notNullable();
-        table.text('vi').notNullable().defaultTo(''); // Add the vi field
+        table.text('iv').notNullable().defaultTo('');
+        table.string('auth_tag').notNullable();
         table.timestamps(true, true);
 
         table.foreign('sender_id').references('id').inTable('users');

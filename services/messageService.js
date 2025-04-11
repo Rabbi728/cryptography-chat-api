@@ -16,14 +16,15 @@ async function createConversation(name, participants) {
     return conversationId;
 }
 
-async function sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey, vi) {
+async function sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey, iv, authTag) {
     await knex('messages').insert({
         conversation_id: conversationId,
         sender_id: senderId,
         message,
         sender_decrypt_key: senderDecryptKey,
         receiver_decrypt_key: receiverDecryptKey,
-        vi, // Include the vi field
+        iv,
+        auth_tag: authTag,
         created_at: knex.fn.now(),
         updated_at: knex.fn.now(),
     });
