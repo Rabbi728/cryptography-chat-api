@@ -31,9 +31,6 @@ async function sendMessage(req, res) {
         const senderId = req.user.id;
 
         await messageService.sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey, iv, authTag);
-        await knex('conversations')
-            .where({ id: conversationId })
-            .update({ updated_at: knex.fn.now() });
 
         res.status(200).send({ message: 'Message sent successfully' });
     } catch (err) {
