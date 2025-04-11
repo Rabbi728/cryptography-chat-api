@@ -1,5 +1,16 @@
 const messageService = require('../services/messageService');
 const userService = require('../services/userService');
+const yup = require('yup'); // Import yup for validation
+
+// Validation schema for sendMessage
+const sendMessageSchema = yup.object().shape({
+    conversationId: yup.number().required('Conversation ID is required'),
+    message: yup.string().required('Message is required'),
+    senderDecryptKey: yup.string().required('Sender decrypt key is required'),
+    receiverDecryptKey: yup.string().required('Receiver decrypt key is required'),
+    iv: yup.string().required('IV is required'),
+    authTag: yup.string().required('Auth tag is required'),
+});
 
 async function createConversation(req, res) {
     const { name, participants } = req.body;
@@ -12,17 +23,24 @@ async function createConversation(req, res) {
 }
 
 async function sendMessage(req, res) {
-    const { conversationId, message, senderDecryptKey, receiverDecryptKey, iv, authTag } = req.body; // Include vi
-    const senderId = req.user.id;
-
     try {
-        await messageService.sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey, iv, authTag); // Pass vi
+        // Validate input
+        await sendMessageSchema.validate(req.body, { abortEarly: false });
+
+        const { conversationId, message, senderDecryptKey, receiverDecryptKey, iv, authTag } = req.body;
+        const senderId = req.user.id;
+
+        await messageService.sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey, iv, authTag);
         await knex('conversations')
             .where({ id: conversationId })
-            .update({ updated_at: knex.fn.now() }); // Update updated_at for the conversation
+            .update({ updated_at: knex.fn.now() });
+
         res.status(200).send({ message: 'Message sent successfully' });
     } catch (err) {
-        res.status(500).send({ error: 'Error sending message' });
+        if (err.name === 'ValidationError') {
+            return res.status(400).send({ errors: err.errors });
+        }
+        res.status(500).send({ error: 'Error sending message', details: err.message });
     }
 }
 
