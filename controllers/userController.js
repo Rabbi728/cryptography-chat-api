@@ -48,4 +48,13 @@ async function login(req, res) {
     }
 }
 
-module.exports = { register, login };
+async function getAllUsers(req, res) {
+    try {
+        const users = await userService.getAllUsers();
+        res.status(200).send(users);
+    } catch (err) {
+        res.status(500).send({ error: 'Error retrieving users' });
+    }
+}
+
+module.exports = { register, login, getAllUsers };

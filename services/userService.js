@@ -74,4 +74,8 @@ async function getUserByEmail(email) {
     return await knex('users').where({ email }).first();
 }
 
-module.exports = { register, login, getPrivateKey, getUserByEmail };
+async function getAllUsers() {
+    return await knex('users').select('id', 'name', 'email', 'created_at', 'updated_at');
+}
+
+module.exports = { register, login, getPrivateKey, getUserByEmail, getAllUsers };
