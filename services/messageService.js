@@ -41,10 +41,10 @@ async function fetchMessagesWithDetails(conversationId, userId) {
         .select('users.id as user_id', 'users.name', 'users.email', 'users.public_key')
         .first();
 
-    return messages.map((msg) => ({
-        ...msg,
-        other_user: otherParticipant,
-    }));
+    return {
+        ...messages,
+        recipient: otherParticipant,
+    };
 }
 
 async function fetchConversations(userId) {

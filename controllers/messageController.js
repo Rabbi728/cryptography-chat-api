@@ -35,7 +35,6 @@ async function fetchMessages(req, res) {
         if (!user) {
             return res.status(404).send({ error: 'User not found' });
         }
-
         const messages = await messageService.fetchMessagesWithDetails(conversationId, user.id);
         res.status(200).send(messages);
     } catch (err) {
