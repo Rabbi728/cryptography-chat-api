@@ -14,5 +14,6 @@ router.get('/conversations', authMiddleware, messageController.fetchConversation
 router.post('/send', authMiddleware, messageController.sendMessage);
 router.get('/messages', authMiddleware, messageController.fetchMessages);
 router.get('/users', authMiddleware, userController.getAllUsers);
+router.post('/conversation', authMiddleware, messageController.findOrCreateConversation);
 
 module.exports = router;

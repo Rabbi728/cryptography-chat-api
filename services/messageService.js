@@ -55,4 +55,21 @@ async function fetchConversations(userId) {
         .orderBy('conversations.created_at', 'desc');
 }
 
-module.exports = { createConversation, sendMessage, fetchMessagesWithDetails, fetchConversations };
+async function findOrCreateConversation(authUserId, recipientId) {
+    const conversation = await knex('conversations')
+        .join('conversation_participants as cp1', 'conversations.id', 'cp1.conversation_id')
+        .join('conversation_participants as cp2', 'conversations.id', 'cp2.conversation_id')
+        .where('cp1.user_id', authUserId)
+        .andWhere('cp2.user_id', recipientId)
+        .select('conversations.*')
+        .first();
+
+    if (!conversation) {
+        const conversationId = await createConversation("", [authUserId, recipientId]);
+        return await knex('conversations').where({ id: conversationId }).first();
+    }
+
+    return conversation;
+}
+
+module.exports = { createConversation, sendMessage, fetchMessagesWithDetails, fetchConversations, findOrCreateConversation };

@@ -53,4 +53,20 @@ async function fetchConversations(req, res) {
     }
 }
 
-module.exports = { createConversation, sendMessage, fetchMessages, fetchConversations };
+async function findOrCreateConversation(req, res) {
+    try {
+        const authUserId = req.user.id;
+        const { recipientId } = req.body;
+
+        if (!recipientId) {
+            return res.status(400).send({ error: 'Recipient ID is required' });
+        }
+
+        const conversation = await messageService.findOrCreateConversation(authUserId, recipientId);
+        res.status(200).send(conversation);
+    } catch (err) {
+        res.status(500).send({ error: 'Error processing conversation' });
+    }
+}
+
+module.exports = { createConversation, sendMessage, fetchMessages, fetchConversations, findOrCreateConversation };
