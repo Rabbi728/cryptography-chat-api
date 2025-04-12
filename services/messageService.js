@@ -33,7 +33,7 @@ async function sendMessage(conversationId, senderId, message, senderDecryptKey, 
 async function fetchMessagesWithDetails(conversationId, userId) {
     const messages = await knex('messages')
         .where({ conversation_id: conversationId })
-        .orderBy('created_at', 'desc');
+        .orderBy('created_at', 'asc');
 
     const otherParticipant = await knex('conversation_participants')
         .join('users', 'conversation_participants.user_id', 'users.id')
