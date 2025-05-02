@@ -59,7 +59,7 @@ async function login(email, password) {
     const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
     const user = await knex('users').where({ email, password: hashedPassword }).first();
     if (!user) throw new Error('Invalid credentials');
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '12h' });
     const encryptedPrivateKey = encryptPrivateKeyWithPassword(decryptPrivateKey(user.private_key), password);
     return { token, privateKey: encryptedPrivateKey, user };
 }
