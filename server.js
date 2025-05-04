@@ -15,7 +15,7 @@ const io     = new Server(server, {
         methods: ["GET", "POST"],
     },
 });
-socketService(server)
+socketService(io.of("/chat-socket"));
 
 app.use(cors());
 app.use(express.json());
