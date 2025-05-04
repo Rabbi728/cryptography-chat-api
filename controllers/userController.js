@@ -29,6 +29,7 @@ async function register(req, res) {
         if (err.name === 'ValidationError') {
             return res.status(400).send({ errors: err.errors });
         }
+        console.log(err);
         res.status(500).send({ error: 'Error registering user' });
     }
 }

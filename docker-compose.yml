@@ -21,7 +21,7 @@ services:
       - DB_USER=root
       - DB_PASSWORD=iamrabbi
       - DB_NAME=cryptography_chat
-      - MYSQL_PORT=3309
+      - MYSQL_PORT=3306
     networks:
       - cryptonet
       
@@ -47,6 +47,8 @@ services:
     restart: always
     ports:
       - "8080:8080"
+    environment:
+      - ADMINER_DESIGN=flat
     depends_on:
       - criptography_db
     networks:
