@@ -1,0 +1,61 @@
+services:
+  criptography_app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: criptography-app
+    restart: always
+    ports:
+      - "3034:3033"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - criptography_db
+    environment:
+      - NODE_ENV=development
+      - APP_PORT=3033
+      - SECRET_KEY=your_encryption_secret_key
+      - JWT_SECRET=your_jwt_secret_key
+      - DB_HOST=criptography_db
+      - DB_USER=root
+      - DB_PASSWORD=iamrabbi
+      - DB_NAME=cryptography_chat
+      - MYSQL_PORT=3309
+    networks:
+      - cryptonet
+      
+  criptography_db:
+    image: mariadb:latest
+    container_name: cryptography-db
+    restart: always
+    ports:
+      - "3309:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=iamrabbi
+      - MYSQL_DATABASE=cryptography_chat
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=iamrabbi
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - cryptonet
+      
+  criptography_adminer:
+    image: adminer:latest
+    container_name: cryptography-adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - criptography_db
+    networks:
+      - cryptonet
+
+networks:
+  cryptonet:
+    driver: bridge
+    
+volumes:
+  mariadb_data:
+    driver: local
