@@ -2,15 +2,22 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors'); // Added cors library
+const cors = require('cors');
 const socketController = require('./controllers/socketController');
 const apiRoutes = require('./routes/apiRoutes');
+const socketService = require('./services/socketService')
 
-const app = express();
+const app    = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io     = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+    },
+});
+socketService(server)
 
-app.use(cors()); // Enable CORS
+app.use(cors());
 app.use(express.json());
 app.use('/api', apiRoutes);
 
