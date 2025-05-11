@@ -2,8 +2,8 @@ module.exports = (io) => {
     io.on("connection", (socket) => {
         console.log("Chat User Connected:", socket.id);
 
-        socket.on('SendMessage', (msg) => { 
-            socket.to(msg.conversation).emit("RceiveMessage", msg);
+        socket.on('SendMessage', (msg) => {
+            io.to(msg.conversationId).emit("RceiveMessage", msg);
             io.emit("syncChatSidebar", msg);
         })
         socket.on('RceiveMessage', (msg) => {
@@ -21,9 +21,10 @@ module.exports = (io) => {
         socket.on('userStatusUpdate', (convId) => { 
             console.log(convId);
         })
-        socket.on("joinChat", (userId) => {
-            socket.join(userId);
-            io.emit("userStatusUpdate", { userId, status: "online" });
+        socket.on("joinChat", ({conversationId}) => {
+            socket.join(conversationId);
+            console.log("User joined room:", conversationId);
+            io.emit("userStatusUpdate", { conversationId, status: "online" });
         });
 
         socket.on("leaveChat", (userId) => {
