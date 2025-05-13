@@ -1,8 +1,7 @@
 const messageService = require('../services/messageService');
 const userService = require('../services/userService');
-const yup = require('yup'); // Import yup for validation
+const yup = require('yup');
 
-// Validation schema for sendMessage
 const sendMessageSchema = yup.object().shape({
     conversationId: yup.number().required('Conversation ID is required'),
     message: yup.string().required('Message is required'),
@@ -24,7 +23,6 @@ async function createConversation(req, res) {
 
 async function sendMessage(req, res) {
     try {
-        // Validate input
         await sendMessageSchema.validate(req.body, { abortEarly: false });
 
         const { conversationId, message, senderDecryptKey, receiverDecryptKey, iv, authTag } = req.body;
@@ -58,7 +56,7 @@ async function fetchMessages(req, res) {
 }
 
 async function fetchConversations(req, res) {
-    const { userId } = req.query;
+    const { userId } = req.user.id;
     try {
         const conversations = await messageService.fetchConversations(userId);
         res.status(200).send(conversations);

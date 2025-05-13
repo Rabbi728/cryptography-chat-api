@@ -49,11 +49,32 @@ async function fetchMessagesWithDetails(conversationId, userId) {
 }
 
 async function fetchConversations(userId) {
-    return await knex('conversations')
+    const conversations = await knex('conversations')
         .join('conversation_participants', 'conversations.id', 'conversation_participants.conversation_id')
         .where('conversation_participants.user_id', userId)
         .select('conversations.*')
         .orderBy('conversations.created_at', 'desc');
+
+    const conversationsWithLastMessage = await Promise.all(conversations.map(async (conversation) => {
+        const lastMessage = await knex('messages')
+            .where('conversation_id', conversation.id)
+            .orderBy('created_at', 'desc')
+            .first();
+        
+        const participants = await knex('conversation_participants')
+            .join('users', 'conversation_participants.user_id', 'users.id')
+            .where('conversation_participants.conversation_id', conversation.id)
+            .andWhere('users.id', '!=', userId)
+            .select('users.id', 'users.name', 'users.email');
+        
+        return {
+            ...conversation,
+            lastMessage: lastMessage || null,
+            participants
+        };
+    }));
+
+    return conversationsWithLastMessage;
 }
 
 async function findOrCreateConversation(authUserId, recipientId) {
