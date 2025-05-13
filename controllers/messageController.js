@@ -56,11 +56,13 @@ async function fetchMessages(req, res) {
 }
 
 async function fetchConversations(req, res) {
-    const { userId } = req.user.id;
+    const { id } = req.user;
     try {
-        const conversations = await messageService.fetchConversations(userId);
+        const conversations = await messageService.fetchConversations(id);
         res.status(200).send(conversations);
     } catch (err) {
+        console.log(err);
+        
         res.status(500).send({ error: 'Error fetching conversations' });
     }
 }

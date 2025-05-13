@@ -28,6 +28,9 @@ async function sendMessage(conversationId, senderId, message, senderDecryptKey, 
         created_at: knex.fn.now(),
         updated_at: knex.fn.now(),
     });
+    await knex('conversations')
+        .where({ id: conversationId })
+        .update({ updated_at: knex.fn.now() });
 }
 
 async function fetchMessagesWithDetails(conversationId, userId) {
@@ -49,32 +52,46 @@ async function fetchMessagesWithDetails(conversationId, userId) {
 }
 
 async function fetchConversations(userId) {
+    console.log(userId);
+    // Simple query to get all conversation IDs that the user is part of
+    const participations = await knex('conversation_participants')
+        .select('conversation_id')
+        .where('user_id', userId);
+    
+    // Extract the conversation IDs
+    const conversationIds = participations.map(p => p.conversation_id);
+    
+    // Get the actual conversations using those IDs
     const conversations = await knex('conversations')
-        .join('conversation_participants', 'conversations.id', 'conversation_participants.conversation_id')
-        .where('conversation_participants.user_id', userId)
-        .select('conversations.*')
-        .orderBy('conversations.created_at', 'desc');
+        .whereIn('id', conversationIds)
+        .orderBy('updated_at', 'desc');
+    
+    // For each conversation, get other participants and last message
+    const enhancedConversations = await Promise.all(
+        conversations.map(async (conversation) => {
+            // Get the other participant(s) in this conversation
+            const otherParticipants = await knex('conversation_participants')
+                .join('users', 'conversation_participants.user_id', 'users.id')
+                .where('conversation_participants.conversation_id', conversation.id)
+                .andWhere('users.id', '!=', userId)
+                .select('users.id as user_id', 'users.name')
+                .first();
 
-    const conversationsWithLastMessage = await Promise.all(conversations.map(async (conversation) => {
-        const lastMessage = await knex('messages')
-            .where('conversation_id', conversation.id)
-            .orderBy('created_at', 'desc')
-            .first();
-        
-        const participants = await knex('conversation_participants')
-            .join('users', 'conversation_participants.user_id', 'users.id')
-            .where('conversation_participants.conversation_id', conversation.id)
-            .andWhere('users.id', '!=', userId)
-            .select('users.id', 'users.name', 'users.email');
-        
-        return {
-            ...conversation,
-            lastMessage: lastMessage || null,
-            participants
-        };
-    }));
+            // Get the latest message in this conversation
+            const lastMessage = await knex('messages')
+                .where('conversation_id', conversation.id)
+                .orderBy('created_at', 'desc')
+                .first();
 
-    return conversationsWithLastMessage;
+            return {
+                ...conversation,
+                participants: otherParticipants,
+                lastMessage: lastMessage || null
+            };
+        })
+    );
+
+    return enhancedConversations;
 }
 
 async function findOrCreateConversation(authUserId, recipientId) {
