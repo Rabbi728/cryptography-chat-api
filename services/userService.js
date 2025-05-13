@@ -78,4 +78,14 @@ async function getAllUsers() {
     return await knex('users').select('id', 'name', 'email', 'created_at', 'updated_at');
 }
 
-module.exports = { register, login, getPrivateKey, getUserByEmail, getAllUsers };
+async function searchUser(query) {
+    if (!query) {
+        return await knex('users').select('id', 'name', 'email', 'created_at', 'updated_at');
+    }
+    return await knex('users')
+        .select('id', 'name', 'email', 'created_at', 'updated_at')
+        .where('email', 'like', `%${query}%`)
+        .orWhere('name', 'like', `%${query}%`);
+}
+
+module.exports = { register, login, getPrivateKey, getUserByEmail, getAllUsers, searchUser };

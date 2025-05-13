@@ -13,6 +13,7 @@ router.post('/conversations', authMiddleware, messageController.createConversati
 router.get('/conversations', authMiddleware, messageController.fetchConversations);
 router.post('/send', authMiddleware, messageController.sendMessage);
 router.get('/messages', authMiddleware, messageController.fetchMessages);
+router.post('/search-users', authMiddleware, userController.searchUser);
 router.get('/users', authMiddleware, userController.getAllUsers);
 router.post('/conversation', authMiddleware, messageController.findOrCreateConversation);
 

@@ -58,4 +58,14 @@ async function getAllUsers(req, res) {
     }
 }
 
-module.exports = { register, login, getAllUsers };
+async function searchUser(req, res) {
+    try {
+        const { q } = req.body;
+        const users = await userService.searchUser(q);
+        res.status(200).send(users);
+    } catch (err) {
+        res.status(500).send({ error: 'Error retrieving users' });
+    }
+}
+
+module.exports = { register, login, getAllUsers, searchUser };
