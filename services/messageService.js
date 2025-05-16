@@ -1,21 +1,5 @@
 const knex = require('knex')(require('../knexfile'));
 
-async function createConversation(name, participants) {
-    const [conversationId] = await knex('conversations')
-        .insert({ name, creator_id : participants[0], recipient_id : participants[1], created_at: knex.fn.now(), updated_at: knex.fn.now() })
-        .returning('id');
-
-    const participantRecords = participants.map((userId) => ({
-        conversation_id: conversationId,
-        user_id: userId,
-        created_at: knex.fn.now(),
-        updated_at: knex.fn.now(),
-    }));
-    await knex('conversation_participants').insert(participantRecords);
-
-    return conversationId;
-}
-
 async function sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey, iv, authTag) {
     await knex('messages').insert({
         conversation_id: conversationId,
@@ -89,23 +73,40 @@ async function fetchConversations(userId) {
 }
 
 async function findOrCreateConversation(authUserId, recipientId) {
-    const conversationsQuery = await knex('conversations')
-        .where(function() {
-            this.where('creator_id', authUserId).andWhere('recipient_id', recipientId)
-                .orWhere(function() {
-                    this.where('creator_id', recipientId).andWhere('recipient_id', authUserId)
-                });
-        })
-        .select('id');
-    
-    if (conversationsQuery.length > 0) {
-        return await knex('conversations')
-            .where('id', conversationsQuery[0].id)
+    return knex.transaction(async (trx) => {
+        const existingConversation = await trx('conversations')
+            .where(function() {
+                this.where('creator_id', authUserId).andWhere('recipient_id', recipientId)
+                    .orWhere(function() {
+                        this.where('creator_id', recipientId).andWhere('recipient_id', authUserId)
+                    });
+            })
             .first();
-    }
-
-    const conversationId = await createConversation("", [authUserId, recipientId]);
-    return await knex('conversations').where({ id: conversationId }).first();
+        
+        if (existingConversation) {
+            return existingConversation;
+        }
+        
+        const [conversationId] = await trx('conversations')
+            .insert({ 
+                name: "", 
+                creator_id: authUserId, 
+                recipient_id: recipientId, 
+                created_at: trx.fn.now(), 
+                updated_at: trx.fn.now() 
+            })
+            .returning('id');
+            
+        const participantRecords = [authUserId, recipientId].map((userId) => ({
+            conversation_id: conversationId,
+            user_id: userId,
+            created_at: trx.fn.now(),
+            updated_at: trx.fn.now(),
+        }));
+        await trx('conversation_participants').insert(participantRecords);
+        
+        return await trx('conversations').where({ id: conversationId }).first();
+    });
 }
 
-module.exports = { createConversation, sendMessage, fetchMessagesWithDetails, fetchConversations, findOrCreateConversation };
+module.exports = { sendMessage, fetchMessagesWithDetails, fetchConversations, findOrCreateConversation };
