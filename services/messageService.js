@@ -73,8 +73,9 @@ async function fetchConversations(userId) {
 }
 
 async function findOrCreateConversation(authUserId, recipientId) {
-    return knex.transaction(async (trx) => {
-        const existingConversation = await trx('conversations')
+    try {
+        // First try to find an existing conversation without a transaction
+        const existingConversation = await knex('conversations')
             .where(function() {
                 this.where('creator_id', authUserId).andWhere('recipient_id', recipientId)
                     .orWhere(function() {
@@ -87,26 +88,65 @@ async function findOrCreateConversation(authUserId, recipientId) {
             return existingConversation;
         }
         
-        const [conversationId] = await trx('conversations')
-            .insert({ 
-                name: "", 
-                creator_id: authUserId, 
-                recipient_id: recipientId, 
-                created_at: trx.fn.now(), 
-                updated_at: trx.fn.now() 
-            })
-            .returning('id');
+        // If no conversation exists, use a transaction with FOR UPDATE lock to prevent race conditions
+        return await knex.transaction(async (trx) => {
+            // Check again within the transaction with a lock
+            const lockedCheck = await trx('conversations')
+                .where(function() {
+                    this.where('creator_id', authUserId).andWhere('recipient_id', recipientId)
+                        .orWhere(function() {
+                            this.where('creator_id', recipientId).andWhere('recipient_id', authUserId)
+                        });
+                })
+                .forUpdate()
+                .first();
             
-        const participantRecords = [authUserId, recipientId].map((userId) => ({
-            conversation_id: conversationId,
-            user_id: userId,
-            created_at: trx.fn.now(),
-            updated_at: trx.fn.now(),
-        }));
-        await trx('conversation_participants').insert(participantRecords);
+            if (lockedCheck) {
+                return lockedCheck;
+            }
+            
+            // Create a new conversation
+            const [conversationId] = await trx('conversations')
+                .insert({ 
+                    name: "", 
+                    creator_id: authUserId, 
+                    recipient_id: recipientId, 
+                    created_at: trx.fn.now(), 
+                    updated_at: trx.fn.now() 
+                })
+                .returning('id');
+                
+            // Add participants
+            const participantRecords = [authUserId, recipientId].map((userId) => ({
+                conversation_id: conversationId,
+                user_id: userId,
+                created_at: trx.fn.now(),
+                updated_at: trx.fn.now(),
+            }));
+            await trx('conversation_participants').insert(participantRecords);
+            
+            return await trx('conversations').where({ id: conversationId }).first();
+        });
+    } catch (error) {
+        console.error('Error in findOrCreateConversation:', error);
         
-        return await trx('conversations').where({ id: conversationId }).first();
-    });
+        // If there was an error, try one more time to find the conversation
+        // This handles the case where another concurrent process created the conversation
+        const fallbackCheck = await knex('conversations')
+            .where(function() {
+                this.where('creator_id', authUserId).andWhere('recipient_id', recipientId)
+                    .orWhere(function() {
+                        this.where('creator_id', recipientId).andWhere('recipient_id', authUserId)
+                    });
+            })
+            .first();
+        
+        if (fallbackCheck) {
+            return fallbackCheck;
+        }
+        
+        throw error;
+    }
 }
 
 module.exports = { sendMessage, fetchMessagesWithDetails, fetchConversations, findOrCreateConversation };
