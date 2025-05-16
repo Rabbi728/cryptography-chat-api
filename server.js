@@ -6,6 +6,7 @@ const cors = require('cors');
 const socketController = require('./controllers/socketController');
 const apiRoutes = require('./routes/apiRoutes');
 const socketService = require('./services/socketService')
+const path = require('path');
 
 const app    = express();
 const server = http.createServer(app);
@@ -19,6 +20,10 @@ socketService(io.of("/chat-socket"));
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
 app.use('/api', apiRoutes);
 
 io.on('connection', (socket) => {

@@ -1,5 +1,6 @@
 const userService = require('../services/userService');
 const yup = require('yup');
+const path = require('path');
 
 const registerSchema = yup.object().shape({
     name: yup.string().required('Name is required'),
@@ -10,6 +11,10 @@ const registerSchema = yup.object().shape({
 const loginSchema = yup.object().shape({
     email: yup.string().email('Valid email is required').required('Email is required'),
     password: yup.string().required('Password is required'),
+});
+
+const updateProfileSchema = yup.object().shape({
+    name: yup.string().min(1, 'Name must not be empty').notRequired()
 });
 
 async function register(req, res) {
@@ -68,4 +73,50 @@ async function searchUser(req, res) {
     }
 }
 
-module.exports = { register, login, getAllUsers, searchUser };
+async function updateProfile(req, res) {
+    try {
+        await updateProfileSchema.validate(req.body, { abortEarly: false });
+
+        const userId = req.user.id;
+        const userData = {};
+        
+        // Handle profile data (name)
+        if (req.body.name) {
+            userData.name = req.body.name;
+        }
+        
+        // Handle avatar upload if present
+        if (req.file) {
+            // Get the relative path for storing in database
+            const relativePath = `/uploads/avatars/${path.basename(req.file.path)}`;
+            userData.avatar = relativePath;
+        }
+
+        // Check if there's any data to update
+        if (Object.keys(userData).length === 0) {
+            return res.status(400).send({ error: 'No data provided for update' });
+        }
+
+        const updatedUser = await userService.updateProfile(userId, userData);
+        res.status(200).send({ message: 'Profile updated successfully', user: updatedUser });
+    } catch (err) {
+        if (err.name === 'ValidationError') {
+            return res.status(400).send({ errors: err.errors });
+        }
+        console.log(err);
+        res.status(500).send({ error: 'Error updating profile' });
+    }
+}
+
+async function getProfile(req, res) {
+    try {
+        const userId = req.user.id;
+        const profile = await userService.getUserProfile(userId);
+        res.status(200).send(profile);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send({ error: 'Error retrieving profile' });
+    }
+}
+
+module.exports = { register, login, getAllUsers, searchUser, updateProfile, getProfile };

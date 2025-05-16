@@ -95,4 +95,38 @@ async function searchUser(query, userId) {
         .limit(5);
 }
 
-module.exports = { register, login, getPrivateKey, getUserByEmail, getAllUsers, searchUser };
+async function updateProfile(userId, userData) {
+    const updatableFields = {};
+    
+    if (userData.name) {
+        updatableFields.name = userData.name;
+    }
+    
+    if (userData.avatar) {
+        updatableFields.avatar = userData.avatar;
+    }
+    
+    if (Object.keys(updatableFields).length === 0) {
+        throw new Error('No valid fields to update');
+    }
+    
+    updatableFields.updated_at = knex.fn.now();
+    
+    await knex('users')
+        .where({ id: userId })
+        .update(updatableFields);
+    
+    return await knex('users')
+        .where({ id: userId })
+        .select('id', 'name', 'email', 'avatar', 'created_at', 'updated_at')
+        .first();
+}
+
+async function getUserProfile(userId) {
+    return await knex('users')
+        .where({ id: userId })
+        .select('id', 'name', 'email', 'avatar', 'created_at', 'updated_at')
+        .first();
+}
+
+module.exports = { register, login, getPrivateKey, getUserByEmail, getAllUsers, searchUser, updateProfile, getUserProfile };

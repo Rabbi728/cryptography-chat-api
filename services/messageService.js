@@ -74,7 +74,6 @@ async function fetchConversations(userId) {
 
 async function findOrCreateConversation(authUserId, recipientId) {
     try {
-        // First try to find an existing conversation without a transaction
         const existingConversation = await knex('conversations')
             .where(function() {
                 this.where('creator_id', authUserId).andWhere('recipient_id', recipientId)
@@ -88,9 +87,7 @@ async function findOrCreateConversation(authUserId, recipientId) {
             return existingConversation;
         }
         
-        // If no conversation exists, use a transaction with FOR UPDATE lock to prevent race conditions
         return await knex.transaction(async (trx) => {
-            // Check again within the transaction with a lock
             const lockedCheck = await trx('conversations')
                 .where(function() {
                     this.where('creator_id', authUserId).andWhere('recipient_id', recipientId)
@@ -105,7 +102,6 @@ async function findOrCreateConversation(authUserId, recipientId) {
                 return lockedCheck;
             }
             
-            // Create a new conversation
             const [conversationId] = await trx('conversations')
                 .insert({ 
                     name: "", 
@@ -116,7 +112,6 @@ async function findOrCreateConversation(authUserId, recipientId) {
                 })
                 .returning('id');
                 
-            // Add participants
             const participantRecords = [authUserId, recipientId].map((userId) => ({
                 conversation_id: conversationId,
                 user_id: userId,
@@ -129,9 +124,6 @@ async function findOrCreateConversation(authUserId, recipientId) {
         });
     } catch (error) {
         console.error('Error in findOrCreateConversation:', error);
-        
-        // If there was an error, try one more time to find the conversation
-        // This handles the case where another concurrent process created the conversation
         const fallbackCheck = await knex('conversations')
             .where(function() {
                 this.where('creator_id', authUserId).andWhere('recipient_id', recipientId)
