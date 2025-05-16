@@ -2,7 +2,7 @@ const knex = require('knex')(require('../knexfile'));
 
 async function createConversation(name, participants) {
     const [conversationId] = await knex('conversations')
-        .insert({ name, created_at: knex.fn.now(), updated_at: knex.fn.now() })
+        .insert({ name, creator_id : participants[0], recipient_id : participants[1], created_at: knex.fn.now(), updated_at: knex.fn.now() })
         .returning('id');
 
     const participantRecords = participants.map((userId) => ({
@@ -89,26 +89,21 @@ async function fetchConversations(userId) {
 }
 
 async function findOrCreateConversation(authUserId, recipientId) {
-    const sharedConversations = await knex('conversation_participants as cp1')
-        .join('conversation_participants as cp2', 'cp1.conversation_id', 'cp2.conversation_id')
-        .where('cp1.user_id', authUserId)
-        .andWhere('cp2.user_id', recipientId)
-        .select('cp1.conversation_id');
+    const conversationsQuery = await knex('conversations')
+        .where(function() {
+            this.where('creator_id', authUserId).andWhere('recipient_id', recipientId)
+                .orWhere(function() {
+                    this.where('creator_id', recipientId).andWhere('recipient_id', authUserId)
+                });
+        })
+        .select('id');
     
-    if (sharedConversations.length > 0) {
-        for (const { conversation_id } of sharedConversations) {
-            const participantCount = await knex('conversation_participants')
-                .where('conversation_id', conversation_id)
-                .count('* as count')
-                .first();
-                
-            if (participantCount.count === 2) {
-                return await knex('conversations')
-                    .where('id', conversation_id)
-                    .first();
-            }
-        }
+    if (conversationsQuery.length > 0) {
+        return await knex('conversations')
+            .where('id', conversationsQuery[0].id)
+            .first();
     }
+
     const conversationId = await createConversation("", [authUserId, recipientId]);
     return await knex('conversations').where({ id: conversationId }).first();
 }
