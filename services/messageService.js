@@ -53,23 +53,18 @@ async function fetchMessagesWithDetails(conversationId, userId) {
 
 async function fetchConversations(userId) {
     console.log(userId);
-    // Simple query to get all conversation IDs that the user is part of
     const participations = await knex('conversation_participants')
         .select('conversation_id')
         .where('user_id', userId);
     
-    // Extract the conversation IDs
     const conversationIds = participations.map(p => p.conversation_id);
     
-    // Get the actual conversations using those IDs
     const conversations = await knex('conversations')
         .whereIn('id', conversationIds)
         .orderBy('updated_at', 'desc');
     
-    // For each conversation, get other participants and last message
     const enhancedConversations = await Promise.all(
         conversations.map(async (conversation) => {
-            // Get the other participant(s) in this conversation
             const otherParticipants = await knex('conversation_participants')
                 .join('users', 'conversation_participants.user_id', 'users.id')
                 .where('conversation_participants.conversation_id', conversation.id)
@@ -77,7 +72,6 @@ async function fetchConversations(userId) {
                 .select('users.id as user_id', 'users.name')
                 .first();
 
-            // Get the latest message in this conversation
             const lastMessage = await knex('messages')
                 .where('conversation_id', conversation.id)
                 .orderBy('created_at', 'desc')
@@ -95,20 +89,28 @@ async function fetchConversations(userId) {
 }
 
 async function findOrCreateConversation(authUserId, recipientId) {
-    const conversation = await knex('conversations')
-        .join('conversation_participants as cp1', 'conversations.id', 'cp1.conversation_id')
-        .join('conversation_participants as cp2', 'conversations.id', 'cp2.conversation_id')
+    const sharedConversations = await knex('conversation_participants as cp1')
+        .join('conversation_participants as cp2', 'cp1.conversation_id', 'cp2.conversation_id')
         .where('cp1.user_id', authUserId)
         .andWhere('cp2.user_id', recipientId)
-        .select('conversations.*')
-        .first();
-
-    if (!conversation) {
-        const conversationId = await createConversation("", [authUserId, recipientId]);
-        return await knex('conversations').where({ id: conversationId }).first();
+        .select('cp1.conversation_id');
+    
+    if (sharedConversations.length > 0) {
+        for (const { conversation_id } of sharedConversations) {
+            const participantCount = await knex('conversation_participants')
+                .where('conversation_id', conversation_id)
+                .count('* as count')
+                .first();
+                
+            if (participantCount.count === 2) {
+                return await knex('conversations')
+                    .where('id', conversation_id)
+                    .first();
+            }
+        }
     }
-
-    return conversation;
+    const conversationId = await createConversation("", [authUserId, recipientId]);
+    return await knex('conversations').where({ id: conversationId }).first();
 }
 
 module.exports = { createConversation, sendMessage, fetchMessagesWithDetails, fetchConversations, findOrCreateConversation };

@@ -9,7 +9,6 @@ const router = express.Router();
 router.post('/register', guestMiddleware, userController.register);
 router.post('/login', guestMiddleware, userController.login);
 
-router.post('/conversations', authMiddleware, messageController.createConversation);
 router.get('/conversations', authMiddleware, messageController.fetchConversations);
 router.post('/send', authMiddleware, messageController.sendMessage);
 router.get('/messages', authMiddleware, messageController.fetchMessages);

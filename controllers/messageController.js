@@ -11,16 +11,6 @@ const sendMessageSchema = yup.object().shape({
     authTag: yup.string().required('Auth tag is required'),
 });
 
-async function createConversation(req, res) {
-    const { name, participants } = req.body;
-    try {
-        const conversationId = await messageService.createConversation(name, participants);
-        res.status(201).send({ conversationId });
-    } catch (err) {
-        res.status(500).send({ error: 'Error creating conversation' });
-    }
-}
-
 async function sendMessage(req, res) {
     try {
         await sendMessageSchema.validate(req.body, { abortEarly: false });
@@ -83,4 +73,4 @@ async function findOrCreateConversation(req, res) {
     }
 }
 
-module.exports = { createConversation, sendMessage, fetchMessages, fetchConversations, findOrCreateConversation };
+module.exports = { sendMessage, fetchMessages, fetchConversations, findOrCreateConversation };
