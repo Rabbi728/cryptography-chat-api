@@ -18,5 +18,6 @@ router.get('/users', authMiddleware, userController.getAllUsers);
 router.post('/conversation', authMiddleware, messageController.findOrCreateConversation);
 router.put('/profile', authMiddleware, upload.single('avatar'), userController.updateProfile);
 router.get('/profile', authMiddleware, userController.getProfile);
+router.get('/online-users', authMiddleware, userController.getOnlineUsers);
 
 module.exports = router;

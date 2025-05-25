@@ -1,3 +1,5 @@
+const knex = require('knex')(require('../knexfile'));
+
 async function handleConnection(socket, io) {
     console.log('A user connected:', socket.id);
 
@@ -28,4 +30,28 @@ async function handleConnection(socket, io) {
     });
 }
 
-module.exports = { handleConnection };
+// Get details of online users from the database
+async function getOnlineUserDetails(onlineUserIds) {
+    try {
+        // Convert all IDs to strings for comparison
+        const stringIds = onlineUserIds.map(id => id.toString());
+        
+        // Fetch user details for the online users
+        const users = await knex('users')
+            .select('id', 'name', 'email', 'avatar')
+            .whereIn('id', stringIds);
+            
+        return users.map(user => ({
+            ...user,
+            isOnline: true
+        }));
+    } catch (error) {
+        console.error('Error fetching online user details:', error);
+        return [];
+    }
+}
+
+module.exports = { 
+    handleConnection, 
+    getOnlineUserDetails 
+};

@@ -1,4 +1,5 @@
 const userService = require('../services/userService');
+const socketController = require('./socketController');
 const yup = require('yup');
 const path = require('path');
 
@@ -119,4 +120,35 @@ async function getProfile(req, res) {
     }
 }
 
-module.exports = { register, login, getAllUsers, searchUser, updateProfile, getProfile };
+async function getOnlineUsers(req, res) {
+    try {
+        // Get socket.io instance from the app
+        const io = req.app.get('io');
+        
+        if (!io || !io.getOnlineUsers) {
+            return res.status(500).send({ 
+                error: 'Socket service not initialized properly',
+                online: []
+            });
+        }
+        
+        // Get the list of online user IDs
+        const onlineUserIds = io.getOnlineUsers();
+        
+        // Get detailed user information for the online users
+        const onlineUsers = await socketController.getOnlineUserDetails(onlineUserIds);
+        
+        res.status(200).send({ 
+            online: onlineUsers,
+            count: onlineUsers.length
+        });
+    } catch (err) {
+        console.error('Error fetching online users:', err);
+        res.status(500).send({ 
+            error: 'Error retrieving online users',
+            online: []
+        });
+    }
+}
+
+module.exports = { register, login, getAllUsers, searchUser, updateProfile, getProfile, getOnlineUsers };

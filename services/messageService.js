@@ -1,7 +1,7 @@
 const knex = require('knex')(require('../knexfile'));
 
 async function sendMessage(conversationId, senderId, message, senderDecryptKey, receiverDecryptKey, iv, authTag) {
-    await knex('messages').insert({
+    const [messageId] = await knex('messages').insert({
         conversation_id: conversationId,
         sender_id: senderId,
         message,
@@ -11,10 +11,18 @@ async function sendMessage(conversationId, senderId, message, senderDecryptKey, 
         auth_tag: authTag,
         created_at: knex.fn.now(),
         updated_at: knex.fn.now(),
-    });
+    }).returning('id');
+    
     await knex('conversations')
         .where({ id: conversationId })
         .update({ updated_at: knex.fn.now() });
+        
+    // Return the saved message data
+    const savedMessage = await knex('messages')
+        .where({ id: messageId })
+        .first();
+        
+    return savedMessage;
 }
 
 async function fetchMessagesWithDetails(conversationId, userId) {
@@ -141,4 +149,31 @@ async function findOrCreateConversation(authUserId, recipientId) {
     }
 }
 
-module.exports = { sendMessage, fetchMessagesWithDetails, fetchConversations, findOrCreateConversation };
+async function getConversationDetails(conversationId, userId) {
+    try {
+        const conversation = await knex('conversations')
+            .where('id', conversationId)
+            .first();
+            
+        if (!conversation) {
+            return null;
+        }
+        
+        // Find the other participant (recipient)
+        const participants = await knex('conversation_participants')
+            .where('conversation_id', conversationId)
+            .andWhere('user_id', '!=', userId)
+            .first();
+            
+        return {
+            conversationId: conversationId,
+            recipientId: participants ? participants.user_id : null,
+            conversation: conversation
+        };
+    } catch (error) {
+        console.error('Error getting conversation details:', error);
+        return null;
+    }
+}
+
+module.exports = { sendMessage, fetchMessagesWithDetails, fetchConversations, findOrCreateConversation, getConversationDetails };
