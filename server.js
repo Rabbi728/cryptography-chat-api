@@ -18,7 +18,11 @@ const io     = new Server(server, {
 });
 socketService(io.of("/chat-socket"));
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGIN,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+}));
 app.use(express.json());
 
 // Make io instance available to routes
